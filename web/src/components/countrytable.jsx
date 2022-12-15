@@ -62,8 +62,42 @@ const getProductionData = (data) =>
     };
   });
 
-const getExchangeData = (data, exchangeKeys, electricityMixMode) =>
-  exchangeKeys.map((mode) => {
+const getExchangeTotal = (data) => {
+  // exchange is a dictionary where keys are countries and
+  // values are MW.
+  // Negative MW value means export to the country IDed by the key
+  // Positive MW value means import from the country IDed by the key
+
+  const exchangeMW = Object.values(data.exchange);
+  let importMW = 0;
+  let exportMW = 0;
+  for (const mw of exchangeMW) {
+    if (mw > 0) {
+      importMW += mw;
+    } else {
+      exportMW += mw;
+    }
+  }
+  return [
+    {
+      mode: 'Total',
+      exchange: exportMW,
+      exchangeCapacityRange: undefined,
+      gCo2eqPerkWh: 264.34, // TODO compute
+      tCo2eqPerMin: 0, // TODO compute
+    },
+    {
+      mode: 'Total',
+      exchange: importMW,
+      exchangeCapacityRange: undefined,
+      gCo2eqPerkWh: 60, // TODO compute
+      tCo2eqPerMin: 0, // TODO compute
+    },
+  ];
+};
+
+const getExchangeData = (data, exchangeKeys, electricityMixMode) => {
+  const exchangeData = exchangeKeys.map((mode) => {
     // Power in MW
     const exchange = (data.exchange || {})[mode];
     const exchangeCapacityRange = (data.exchangeCapacities || {})[mode];
@@ -81,6 +115,13 @@ const getExchangeData = (data, exchangeKeys, electricityMixMode) =>
       tCo2eqPerMin,
     };
   });
+
+  if (data.exchange) {
+    const exchangeTotal = getExchangeTotal(data);
+    exchangeData.push(...exchangeTotal);
+  }
+  return exchangeData;
+};
 
 const getDataBlockPositions = (productionData, exchangeData) => {
   const productionHeight = productionData.length * (ROW_HEIGHT + PADDING_Y);
